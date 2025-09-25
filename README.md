@@ -1,5 +1,5 @@
 # Artificial intelligence neural network with 3D and dual-hemisphere processing
-Nader.malkei ,PCT:140450140003002031
+Nader.malkei ,PCT/IR2025/050026,140450140003002031iran
     def __init__(self, input_dim, seq_len, input_proj_dim=128, hidden_size=64, 
                  num_layers=2, bidirectional=True, hemisphere_fc_size=64, 
                  lstm_dropout=0.1, fc_dropout=0.3, use_attention=False, 
