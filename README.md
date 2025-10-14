@@ -301,7 +301,24 @@ out = model(x)
 loss = criterion(out, y)
 loss.backward()
 optimizer.step()
-
+ورودی (4D)
+│
+├─→ [پیش‌پردازش با توجه + مدولاسیون] → دو بردار: V_A, V_B
+│
+├─→ پروجکشن: V_A → H_A (8D),   V_B → H_B (8D)
+│
+├─→ تقسیم:  
+│     H_A → H_A1 (4D), H_A2 (4D)  
+│     H_B → H_B1 (4D), H_B2 (4D)
+│
+├─→ تبادل اطلاعات با توجه:
+│     - بین H_A1 و H_B2 → با Cross-Attention ساده  
+│     - بین H_B1 و H_A2 → با Cross-Attention ساده
+│
+├─→ ترکیب زیرشاخه‌های به‌روزشده → دو بردار میانی
+│
+└─→ فیوژن یکپارچه (Concat + Attention Weighting) → خروجی نهایی (2D, softmax)
 # ذخیره مدل
 torch.save(model.state_dict(), "nano_plastic_snn_v4.pt")
 print("✅ مدل چهارم با موفقیت ذخیره شد.")
+
