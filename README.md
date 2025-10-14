@@ -321,4 +321,106 @@ optimizer.step()
 # ذخیره مدل
 torch.save(model.state_dict(), "nano_plastic_snn_v4.pt")
 print("✅ مدل چهارم با موفقیت ذخیره شد.")
+import tensorflow as tf
+from tensorflow.keras.layers import (
+    Input, Dense, BatchNormalization, Dropout, Multiply, Add, Concatenate,
+    Lambda, Softmax, Layer
+)
+from tensorflow.keras.models import Model
+import tensorflow.keras.backend as K
 
+# ----------------------------
+# 1. بلوک توجه ساده (Self/Channel Attention)
+# ----------------------------
+def simple_attention_block(x, name=""):
+    """Channel-wise attention (SE-style)"""
+    dim = K.int_shape(x)[-1]
+    squeeze = Lambda(lambda t: K.mean(t, axis=1, keepdims=True))(x)
+    excite = Dense(max(dim // 2, 1), activation='relu')(squeeze)
+    excite = Dense(dim, activation='sigmoid')(excite)
+    excite = Lambda(lambda t: K.squeeze(t, axis=1))(excite)
+    return Multiply(name=f"{name}_att")([x, excite])
+
+# ----------------------------
+# 2. Cross-Attention سبک بین دو بردار
+# ----------------------------
+def cross_attention(q, k, v, name=""):
+    """
+    q: query (batch, d)
+    k, v: key/value (batch, d)
+    محاسبه وزن توجه: softmax(q · k^T / sqrt(d)) * v
+    """
+    d = K.int_shape(q)[-1]
+    scale = K.sqrt(K.cast(d, 'float32'))
+
+    # dot product attention
+    attn_scores = Lambda(lambda x: tf.linalg.matmul(
+        tf.expand_dims(x[0], axis=1),
+        tf.expand_dims(x[1], axis=2)
+    )[:, 0, 0] / scale)([q, k])  # (batch,)
+
+    attn_weights = Lambda(lambda x: tf.nn.softmax(tf.expand_dims(x, axis=-1), axis=0))(attn_scores)  # (batch, 1)
+
+    # weighted value
+    attended = Multiply()([v, attn_weights])
+    return attended
+
+# ----------------------------
+# 3. مدل اصلی
+# ----------------------------
+
+input_layer = Input(shape=(4,), name="input")
+
+# ============ مرحله 1: پیش‌پردازش با توجه و مدولاسیون ============
+features = Dense(16, activation='relu', name="feat_ext")(input_layer)
+features = BatchNormalization(name="bn_feat")(features)
+features = Dropout(0.2, name="drop_feat")(features)
+features = simple_attention_block(features, name="pre_att")
+
+# تولید دو بردار اولیه (پروجکشن اولیه)
+V_A = Dense(8, activation='relu', name="V_A")(features)
+V_B = Dense(8, activation='relu', name="V_B")(features)
+
+# ============ مرحله 2: پروجکشن به لایه پنهان و تقسیم ============
+H_A = Dense(8, activation='relu', name="H_A")(V_A)
+H_B = Dense(8, activation='relu', name="H_B")(V_B)
+
+# تقسیم هر کدام به دو بخش
+H_A1 = Dense(4, activation='relu', name="H_A1")(H_A)
+H_A2 = Dense(4, activation='relu', name="H_A2")(H_A)
+H_B1 = Dense(4, activation='relu', name="H_B1")(H_B)
+H_B2 = Dense(4, activation='relu', name="H_B2")(H_B)
+
+# ============ مرحله 3: تبادل اطلاعات با مکانیزم توجه ============
+# توجه متقاطع: H_A1 به عنوان query، H_B2 به عنوان key/value
+exchanged_1 = cross_attention(H_A1, H_B2, H_B2, name="cross1")
+exchanged_2 = cross_attention(H_B1, H_A2, H_A2, name="cross2")
+
+# به‌روزرسانی زیرشاخه‌ها (جمع با خودشان برای residual)
+updated_A1 = Add(name="upd_A1")([H_A1, exchanged_1])
+updated_B1 = Add(name="upd_B1")([H_B1, exchanged_2])
+
+# ============ مرحله 4: بازسازی دو شاخه اصلی ============
+recon_A = Concatenate(name="recon_A")([updated_A1, H_A2])  # (8D)
+recon_B = Concatenate(name="recon_B")([updated_B1, H_B2])  # (8D)
+
+# ============ مرحله 5: فیوژن یکپارچه نهایی ============
+# روش: Concat + Channel Attention برای وزن‌دهی هوشمند
+fused = Concatenate(name="fused_concat")([recon_A, recon_B])  # (16D)
+fused = simple_attention_block(fused, name="final_fusion_att")
+
+# لایه خروجی
+output = Dense(2, activation='softmax', name="output")(fused)
+
+# ============ ساخت مدل ============
+model = Model(inputs=input_layer, outputs=output, name="Hierarchical_Attentive_Model")
+
+# کامپایل
+model.compile(
+    optimizer='adam',
+    loss='categorical_crossentropy',
+    metrics=['accuracy']
+)
+
+# نمایش ساختار
+model.summary()
