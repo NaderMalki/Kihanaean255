@@ -4,7 +4,11 @@
     
     
     import torch
-import torch.nn as nn
+    Payton 
+    Import 
+    Numpy 
+    Pandas
+    Jupiter Notebook
 import torch.nn.functional as F
 
 class ColoredNode(nn.Module):
