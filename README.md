@@ -1,8 +1,5 @@
 # Artificial intelligence neural network with 3D and dual-hemisphere processing
 #Nader.malkei,PCT/IR2025/050026,1404501400#03002031
-
-    
-    
     import torch
     Payton 
     Import 
@@ -10,6 +7,11 @@
     Pandas
     Jupiter Notebook
 import torch.nn.functional as F
+pip install numpy
+pip install matplotlib
+pip install scikit-learn
+#توابع فعال‌سازی 
+def relu(z): return np.maximum(0, z) def relu_derivative(z): return (z > 0).astype(float) def softmax(z): exp_z = np.exp(z - np.max(z, axis=1, keepdims=True)) return exp_z / np.sum(exp_z, axis=1, keepdims=True)
 
 class ColoredNode(nn.Module):
     def __init__(self, input_dim, output_dim, color, alpha=0.01, v_ref=1.0):
@@ -373,8 +375,16 @@ def cross_attention(q, k, v, name=""):
 # 3. مدل اصلی
 # ----------------------------
 
-input_layer = Input(shape=(4,), name="input")
 
+pip install numpy
+pip install matplotlib
+pip install scikit-learn
+
+#توابع فعال‌سازی 
+def relu(z): return np.maximum(0, z) def relu_derivative(z): return (z > 0).astype(float) def softmax(z): exp_z = np.exp(z - np.max(z, axis=1, keepdims=True)) return exp_z / np.sum(exp_z, axis=1, keepdims=True)
+
+#مقدار دهی اولیه وزن ها 
+input_size = 784 hidden_size = 64 output_size = 10 np.random.seed(42) W1 = np.random.randn(input_size, hidden_size) * 0.01 b1 = np.zeros((1, hidden_size)) W2 = np.random.randn(hidden_size, output_size) * 0.01 b2 = np.zeros((1, output_size))
 # ============ مرحله 1: پیش‌پردازش با توجه و مدولاسیون ============
 features = Dense(16, activation='relu', name="feat_ext")(input_layer)
 features = BatchNormalization(name="bn_feat")(features)
@@ -415,7 +425,15 @@ fused = simple_attention_block(fused, name="final_fusion_att")
 
 # لایه خروجی
 output = Dense(2, activation='softmax', name="output")(fused)
+King Mazda:
+#پیش بینی مدل در لایه آخر 
+def forward_propagation(X): Z1 = np.dot(X, W1) + b1 A1 = relu(Z1) Z2 = np.dot(A1, W2) + b2 A2 = softmax(Z2) return Z1, A1, Z2, A2
 
+#محاسبه خطا 
+def compute_loss(Y_true, Y_pred): m = Y_true.shape[0] loss = -np.sum(Y_true * np.log(Y_pred + 1e-9)) / m return loss
+
+#گرادیان کاهشی 
+def compute_loss(Y_true, Y_pred): m = Y_true.shape[0] loss = -np.sum(Y_true * np.log(Y_pred + 1e-9)) / m return loss
 # ============ ساخت مدل ============
 model = Model(inputs=input_layer, outputs=output, name="Hierarchical_Attentive_Model")
 
